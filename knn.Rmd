@@ -1,0 +1,284 @@
+---
+title: "DATA 558 $-$ Homework 4"
+author: "Hannah Luebbering"
+date: "May 25, 2022"
+output: 
+  html_document: 
+    css: main.css
+#knit: pagedown::chrome_print
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, out.width = "80%", warning = FALSE, message = FALSE, fig.align = "center", results='hold')
+library(kableExtra)
+library(knitr)
+library(dplyr)
+library(ggplot2)
+library(ggrepel)
+library(hrbrthemes)
+library(class)
+library(plotly)
+library(GGally)
+library(MASS)
+library(ISLR2)
+library(glmnet)
+library(boot)
+library(splines)
+library(tree)
+library(randomForest)
+library(gam)
+
+library(showtext)
+extrafont::loadfonts(device="win")
+font_add_google("Roboto Condensed", "Roboto Condensed")
+
+
+lightpink1 <- "#F7969E"
+pink1 <- "#EC809E"
+pink2 <- "#CA4286"
+pinkred1 <- "#CC1C3B"
+red1 <- "#CC1C3B"
+red2 <- "#AA0A27"
+green1 <- "#A3C57D"
+green2 <- "#6D8F3E"
+blue1 <- "#00B1D2"
+blue2 <- "#008CC1"
+orange1 <- "#E7AA56"
+orange2 <- "#D9932F"
+yellow2 <- "#F4DD40"
+yellow1 <- "#EFDC75"
+pinkorange1 <- "#F8C1CC"
+pinkorange2 <- "#FC97A5"
+pinkorange3 <- "#F99471"
+yelloworange1 <- "#FACE6D"
+greenblue1 <- "#549F98"
+teal1 <- "#7198BB"
+teal2 <- "#356CB0"
+bluepurple1 <- "#3950A0"
+darkgrey1 <- "#555555"
+```
+
+
+<script src="min.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+
+
+
+
+-------------------------------------------------
+
+
+
+> 6. We will once again perform k-nearest-neighbors in a setting with $p = 2$ features. But this time, we'll generate the data differently: let $X_1 \sim \mathrm{Unif}[0, 1]$ and $X_2 \sim \mathrm{Unif}[0, 1]$, i.e. the observations for each feature are i.i.d. from a uniform distribution. An observation belongs to class "red" if $(X_1 - 0.5)^2 + (X_2 - 0.5)^2 \gt 0.15$ and $X_1 \gt 0.5$; to class "green" if $(X_1 - 0.5)^2 + (X_2 - 0.5)^2 \gt 0.15$ and $X_1 \leq 0.5$; and to class "blue" otherwise.
+
+
+
+<div class = "roundedlist">
+
+a. Generate a training set of $n = 200$ observations. Plot the training set.
+
+
+First, we generate a training set of $n= 200$ observations for both $X_1 \sim \mathrm{Unif}[0, 1]$ and $X_2 \sim \mathrm{Unif}[0, 1]$ using the R function `runif`. And then we use the `cbind` function to bind the $X_1$ and $X_2$ variables together into one matrix for the training set, as shown below.
+
+
+
+```{r, echo=TRUE}
+set.seed(123)
+train.x1 <- runif(n = 200, 0, 1)
+
+set.seed(1234)
+train.x2 <- runif(n = 200, 0, 1)
+
+train.X = cbind(train.x1, train.x2)
+```
+
+
+Now we want to assign each observation to either the "red", "blue", or "green" based on the given parameters: class "red" if $(X_1 - 0.5)^2 + (X_2 - 0.5)^2 \gt 0.15$ and $X_1 \gt 0.5$; class "green" if $(X_1 - 0.5)^2 + (X_2 - 0.5)^2 \gt 0.15$ and $X_1 \leq 0.5$; and class "blue" otherwise.
+
+
+
+```{r, echo=TRUE}
+train.class = numeric(200)
+for (i in 1:200) {
+  if ((train.x1[i] - 0.5)^2 + (train.x2 - 0.5)^2 > 0.15) {
+    if (train.x1[i] > 0.5) {
+      train.class[i] = "red"
+    } 
+    else {
+      train.class[i] = "green"
+    }
+  } 
+  else {
+    train.class[i] = "blue"
+  }
+}
+
+```
+
+
+
+
+
+Next, we plot the training set, such that the observations are colored according to their class label.
+
+
+
+
+```{r}
+ggplot(mapping = aes(x = train.x1, y = train.x2, fill = train.class, color=train.class)) +
+  geom_point(shape = 21, stroke=0.35, size=2, alpha=0.85) + scale_color_manual(values = c(blue2, green2, red2))  + scale_fill_manual(values = c(blue1, green1, red1)) + theme_ipsum_rc(base_size = 16) + theme(axis.title.y = element_text(size = 20), axis.text.y = element_text(size = 16), axis.text.x = element_text(size = 16), axis.title.x = element_text(size = 20), legend.title = element_blank())
+```
+
+
+
+b. Now generate a test set consisting of another $n = 200$ observations. On a single plot, display both the training and test set. 
+
+
+
+We generate a test set in a similar manner to part a, as shown below:
+
+
+```{r, echo=TRUE}
+set.seed(234)
+test.x1 <- runif(n = 200, 0, 1)
+
+set.seed(2345)
+test.x2 <- runif(n = 200, 0, 1)
+
+test.X = cbind(test.x1, test.x2)
+
+test.class = numeric(200)
+for (i in 1:200) {
+  if ((test.x1[i] - 0.5)^2 + (test.x2 - 0.5)^2 > 0.15) {
+    if (test.x1[i] > 0.5) {
+      test.class[i] = "red"
+    } 
+    else {
+      test.class[i] = "green"
+    }
+  } 
+  else {
+    test.class[i] = "blue"
+  }
+}
+```
+
+
+Now we have both the training set and test set with their corresponding class labels, which can be visualized in the following single plot where the circle and square symbols indicate the training and test observations, respectively. In addition, the observations are colored according to their class label.
+
+
+```{r}
+p <- ggplot(mapping = aes(x = train.x1, y = train.x2, fill = train.class)) +
+  geom_point(pch=24) + geom_point(mapping = aes(x = test.x1, y = test.x2, fill = test.class), pch = 21) + theme_ipsum(base_size = 10) + theme(axis.title.y = element_blank(), axis.text.y = element_text(size = 8), axis.text.x = element_text(size = 8)) + theme_ipsum_rc(base_size = 16) + theme(axis.title.y = element_text(size = 20), axis.text.y = element_text(size = 16), axis.text.x = element_text(size = 16), axis.title.x = element_text(size = 20), legend.title = element_blank())
+
+
+df1 <- data.frame(x1 = c(c(train.X[, 1], test.X[, 1])), y1 = c(c(train.X[, 2], test.X[, 2])), col1 = c(train.class, test.class), shape1 = rep(c("training set", "test set"), c(200, 200)))
+
+ggplot(data = df1, mapping = aes(x = x1, y = y1, shape = shape1, fill = col1, color = col1)) +
+  geom_point(stroke=0.45, size=2.2, alpha=0.7) + scale_fill_manual(values=c(blue1, green1, red1)) + scale_color_manual(values=c(blue2, green2, red2)) + xlab("Feature 1") + ylab("Feature 2") + scale_shape_manual(values = c(21, 24)) + theme_ipsum_rc(base_size = 16) + theme(axis.title.y = element_text(size = 20), axis.text.y = element_text(size = 16), axis.text.x = element_text(size = 16), axis.title.x = element_text(size = 20), legend.title = element_blank())
+
+
+
+```
+
+
+
+
+c. Fit a k-nearest neighbors model on the training set, for a range of values of $k$ from 1 to 50. Make a plot that displays the value of $1/k$ on the x-axis, and classification error (both training error and test error) on the y-axis. 
+
+
+
+
+We fit a KNN model using the `knn` function on the training data for each value $K=1,2, \ldots , 50$, and evaluate its performance on the test data.
+
+
+
+```{r, echo=TRUE}
+error.train = numeric(50)
+error.test = numeric(50)
+
+for(i in 1:50) {
+  knn.pred1 = knn(train.X, train.X, cl = train.class, k = i)
+  error.train[i] = mean(knn.pred1 != train.class)
+
+  knn.pred2 = knn(train.X, test.X, cl = train.class, k = i)
+  error.test[i] = mean(knn.pred2 != test.class)
+}
+```
+
+
+Now we make a plot of the classification errors (both training error and test error) over the value $1/k$.
+
+
+```{r}
+x = 1 / c(1:50)
+# x = 1/kval
+
+labelsdf <- data.frame(last = c(0.0, 0.073),x=c(1, 1), company= c("training error", "test error"))  
+
+ggp <- ggplot(mapping = aes(x = x, y = error.train)) +
+  geom_line(color = orange1, cex=0.8, alpha=1) + geom_point(color = orange2, fill = orange1, shape = 21, alpha=0.8, size = 1.25) + geom_line(mapping = aes(x=x , y = error.test), color = pink1, cex=0.8, alpha=1) + geom_point(mapping = aes(x=x , y = error.test), color = pink2, fill = pink1, shape = 21, alpha=0.8, size = 1.25) + xlab("1/K") + ylab("Classification Error") + theme_ipsum_rc(base_size = 16) + theme(axis.title.y = element_text(size = 20), axis.text.y = element_text(size = 16), axis.text.x = element_text(size = 16), axis.title.x = element_text(size = 20)) + geom_label_repel(aes(x=x,y=last, label = company), data = labelsdf, nudge_x = 0.5, size = 6)
+
+
+ggp
+
+```
+
+
+
+
+d. For the value of k that resulted in the smallest test error in part (c) above, make a plot displaying the test observations as well as their true and predicted class labels. 
+
+
+
+
+```{r}
+min = error.test[1]
+kmin = 1
+for(i in 1:50){
+  if(min > error.test[i]){
+    min = error.test[i]
+    kmin = i
+  }
+}
+
+knn.pred = knn(train.X, test.X, cl = train.class, k = kmin)
+
+```
+
+
+We see that the smallest test error is $0.065$, which occurs when $K = 4$. For $K = 4$, we plot the test observations as well as their true and predicted class labels. 
+
+
+
+```{r}
+df1 <- data.frame(x1 = c(c(test.X[, 1], test.X[, 1])), 
+           y1 = c(c(test.X[, 2], test.X[, 2])),
+           col1 = c(as.character(knn.pred), test.class),
+           shape1 = rep(c("predicted class", "true class"), c(200, 200)))
+
+p <- ggplot(data = df1, mapping = aes(x = x1, y = y1, shape = shape1)) + geom_point(color = df1$col1) + xlab("Feature 1") + ylab("Feature 2") + scale_shape_manual(values = c(20,0)) + theme_ipsum_rc(base_size = 16) + theme(axis.title.y = element_text(size = 20), axis.text.y = element_text(size = 16), axis.text.x = element_text(size = 16), axis.title.x = element_text(size = 20), legend.title = element_blank())
+
+ggplot(data = df1, mapping = aes(x = x1, y = y1, shape = shape1, fill = col1, color = col1)) +
+  geom_point(stroke=0.5, size=2.2, alpha=0.7) + scale_fill_manual(values=c(blue1, green1, red1)) + scale_color_manual(values=c(blue2, green2, red2)) + xlab("Feature 1") + ylab("Feature 2") + scale_shape_manual(values = c(20, 0)) + theme_ipsum_rc(base_size = 16) + theme(axis.title.y = element_text(size = 20), axis.text.y = element_text(size = 16), axis.text.x = element_text(size = 16), axis.title.x = element_text(size = 20), legend.title = element_blank())
+
+```
+
+
+e. In this example, what is the Bayes error rate? Justify your answer, and explain how it relates to your findings in (c) and (d).
+
+
+In this problem, the Bayes error rate is zero beacause for every observation $X_1$ and $X_2$, the response variable $Y$ is fixed. So the conditional probability will always be $1$ and so the Bayes error rate is $0$. 
+
+Looking at the plot from part (c), we can see that as $1/K$ increases, which means $K$ decreases and the flexibility increases, the training errors begin to level off and approach a small value. For the plot from part (d), we can see that the points grouped by their class and labels all have underlying boundaries. Hence, this means that for a point located in such a boundary, the plot shows the point's label; so the position holds information about the class label.
+
+</div>
+
+
+-------------------------------------------------
+
+
+
+
+
+
