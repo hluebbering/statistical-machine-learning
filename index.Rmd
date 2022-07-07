@@ -46,32 +46,19 @@ library(e1071)
 
 
 
-
-
-
-
 ```{r}
 source("data/data.R")
-twtr.stock <- data.frame(twtr.stock)
-tsla.stock <- data.frame(tsla.stock)
+stocks.data <- data.frame(tsla.stock) %>% 
+  dplyr::select(-adjusted)
+stocks.data$direction <- as.factor(stocks.data$direction)
 
-elonMusk.stocks <- tsla.stock # <- bind_rows(twtr.stock, tsla.stock)
-elonMusk.stocks$direction <- as.factor(elonMusk.stocks$direction)
-stocks.data <- elonMusk.stocks %>% dplyr::select(-adjusted)
-```
-
-
-```{r}
-twitter.data <- read.csv("data/dfclean.csv")
-twitter.data <- twitter.data %>% dplyr::select(created_at, status_id, text, favorite_count, retweet_count, quote_count, reply_count)
-
+twitter.data <- read.csv("data/dfclean.csv") %>% 
+  dplyr::select(created_at, status_id, text, favorite_count, 
+                retweet_count, quote_count, reply_count)
 twitter.data$created_at <- as_datetime(twitter.data$created_at)
 twitter.data$created_at <- as.Date.character(twitter.data$created_at)
 
-
-
-
-twitter.data2 <- twitter.data %>% dplyr::group_by(created_at) %>% 
+twitter.data <- twitter.data %>% dplyr::group_by(created_at) %>% 
   summarise(ntweets = n(),
             nfav = sum(favorite_count),
             nretweet = sum(retweet_count),
@@ -79,10 +66,7 @@ twitter.data2 <- twitter.data %>% dplyr::group_by(created_at) %>%
             alltext = paste0(text, collapse = " ")) %>% 
   arrange(desc(created_at))
 
-df <- dplyr::inner_join(twitter.data2, elonMusk.stocks, by = c("created_at" = "date"))
-
-
-
+df <- dplyr::inner_join(twitter.data, stocks.data, by = c("created_at" = "date"))
 ```
 
 
@@ -90,7 +74,7 @@ df <- dplyr::inner_join(twitter.data2, elonMusk.stocks, by = c("created_at" = "d
 ### Data Description
 
 
-> Stock Market Data for `Tesla` and `Twitter` between $2018$ and $2022$
+> Stock Market Data for `Tesla` between $2016$ and $2022$
 
 
 The dataset we use for the following statistical analysis is stock market data for Elon Musk's publicly traded companies `Tesla` and `Twitter` from $01/01/2018$ to $05/20/2022$. We obtained this data from the Yahoo Finance API using the package `quantmod` in R. The data contains the daily percentage returns for the Tesla and Twitter stock indexes, with $2208$ observations on the following $13$ variables.
@@ -112,6 +96,19 @@ kbll1 <- kable(df.preview, col.names = c("variable", "type", "description")) %>%
 kbll1
 ```
 
+
+
+> Twitter Data for `Elon Musk` between $2016$ and $2022$
+
+
+Dataset of Elon Musk’s most recent Tweets during 2015-2022, stored in CSV format, where each row represents a separate tweet object. All Tweets are collected, parsed, and plotted using the Twitter API and rtweet package in R. In total, there are more than ten-thousand tweets in this dataset, including retweets, replies, and quotes. All objects are to go into a single database.
+
+
+
+
+```{r}
+
+```
 
 
 
@@ -181,16 +178,16 @@ knitr::include_graphics("static/ppairs1.png")
 Based on the correlation coefficients and their corresponding p-values, there is indeed an association between the `daily return rate` and the predictors `volume`, `lag2`, `nfav`, `nretweet`, and `nreply`.
 
 
-```{r, out.width="32%", fig.show='hold', fig.align='default'}
+```{r, out.width="100%", fig.show='hold', fig.align='default'}
 pairs.plot1 <- ggplot(data = df.pairs, mapping = aes(x = volume, y = daily_return)) + geom_point(shape = 21, fill = "#EDC373", color = "#F1BF70", alpha = 0.45, size = 2.5, stroke=0.4) + geom_smooth(cex = 1, alpha=0.15, color = "#F5A26F", se = FALSE, method = "loess", span = 0.25) + xlab("volume") + ylab("daily_return") + theme_ipsum_rc(plot_margin = ggplot2::margin(10, 10, 10, 10), base_size = 8) + theme(axis.title.y = element_text(size = 8), axis.text.y = element_text(size = 8), axis.text.x = element_text(size = 8), axis.title.x = element_text(size = 8))
 
 pairs.plot2 <- ggplot(data = df.pairs, mapping = aes(x = lag2, y = daily_return)) + geom_point(shape = 21, fill = "#F7969E", color = "#E9738D", alpha = 0.45, size = 2.5, stroke=0.4) + geom_smooth(cex = 1, alpha=0.15, color = "#D3507A", se = FALSE, method = "loess", span = 0.25) + xlab("lag2") + ylab("daily_return") + theme_ipsum_rc(plot_margin = ggplot2::margin(10, 10, 10, 10), base_size = 8) + theme(axis.title.y = element_text(size = 8), axis.text.y = element_text(size = 8), axis.text.x = element_text(size = 8), axis.title.x = element_text(size = 8))
 
-pairs.plot3 <- ggplot(data = df.pairs, mapping = aes(x = nfav, y = daily_return)) + geom_point(shape = 21, fill = "#AFCB80", color = "#97BC62", alpha = 0.45, size = 2.5, stroke=0.4) + geom_smooth(cex = 1, alpha=0.15, color = "#759465", se = FALSE, method = "loess", span = 0.25) + xlab("lag3") + ylab("daily_return") + theme_ipsum_rc(plot_margin = ggplot2::margin(10, 10, 10, 10), base_size = 8) + theme(axis.title.y = element_text(size = 8), axis.text.y = element_text(size = 8), axis.text.x = element_text(size = 8), axis.title.x = element_text(size = 8))
+pairs.plot3 <- ggplot(data = df.pairs, mapping = aes(x = nfav, y = daily_return)) + geom_point(shape = 21, fill = "#AFCB80", color = "#97BC62", alpha = 0.45, size = 2.5, stroke=0.4) + geom_smooth(cex = 1, alpha=0.15, color = "#759465", se = FALSE, method = "loess", span = 0.25) + xlab("nfav") + ylab("daily_return") + theme_ipsum_rc(plot_margin = ggplot2::margin(10, 10, 10, 10), base_size = 8) + theme(axis.title.y = element_text(size = 8), axis.text.y = element_text(size = 8), axis.text.x = element_text(size = 8), axis.title.x = element_text(size = 8))
 
-pairs.plot4 <- ggplot(data = df.pairs, mapping = aes(x = nretweet, y = daily_return)) + geom_point(shape = 21, fill = "#AFCB80", color = "#97BC62", alpha = 0.45, size = 2.5, stroke=0.4) + geom_smooth(cex = 1, alpha=0.15, color = "#759465", se = FALSE, method = "loess", span = 0.25) + xlab("lag3") + ylab("daily_return") + theme_ipsum_rc(plot_margin = ggplot2::margin(10, 10, 10, 10), base_size = 8) + theme(axis.title.y = element_text(size = 8), axis.text.y = element_text(size = 8), axis.text.x = element_text(size = 8), axis.title.x = element_text(size = 8))
+pairs.plot4 <- ggplot(data = df.pairs, mapping = aes(x = nretweet, y = daily_return)) + geom_point(shape = 21, fill = "#AFCB80", color = "#97BC62", alpha = 0.45, size = 2.5, stroke=0.4) + geom_smooth(cex = 1, alpha=0.15, color = "#759465", se = FALSE, method = "loess", span = 0.25) + xlab("nretweet") + ylab("daily_return") + theme_ipsum_rc(plot_margin = ggplot2::margin(10, 10, 10, 10), base_size = 8) + theme(axis.title.y = element_text(size = 8), axis.text.y = element_text(size = 8), axis.text.x = element_text(size = 8), axis.title.x = element_text(size = 8))
 
-pairs.plot5 <- ggplot(data = df.pairs, mapping = aes(x = nreply, y = daily_return)) + geom_point(shape = 21, fill = "#AFCB80", color = "#97BC62", alpha = 0.45, size = 2.5, stroke=0.4) + geom_smooth(cex = 1, alpha=0.15, color = "#759465", se = FALSE, method = "loess", span = 0.25) + xlab("lag3") + ylab("daily_return") + theme_ipsum_rc(base_size = 8, plot_margin = ggplot2::margin(10, 10, 10, 10)) + theme(axis.title.y = element_text(size = 8), axis.text.y = element_text(size = 8), axis.text.x = element_text(size = 8), axis.title.x = element_text(size = 8))
+pairs.plot5 <- ggplot(data = df.pairs, mapping = aes(x = nreply, y = daily_return)) + geom_point(shape = 21, fill = "#AFCB80", color = "#97BC62", alpha = 0.45, size = 2.5, stroke=0.4) + geom_smooth(cex = 1, alpha=0.15, color = "#759465", se = FALSE, method = "loess", span = 0.25) + xlab("nreply") + ylab("daily_return") + theme_ipsum_rc(base_size = 8, plot_margin = ggplot2::margin(10, 10, 10, 10)) + theme(axis.title.y = element_text(size = 8), axis.text.y = element_text(size = 8), axis.text.x = element_text(size = 8), axis.title.x = element_text(size = 8))
 
 ggarr1 <- ggpubr::ggarrange(pairs.plot1, pairs.plot2, pairs.plot3, pairs.plot4, pairs.plot5, ncol = 3, nrow = 2)
 
@@ -214,8 +211,14 @@ Here, let's visualize the distribution for the closing value, daily return rate,
 
 
 ```{r, out.width="32%", fig.show='hold', fig.align='default'}
-ggplot(data = df.pairs, mapping = aes(x = adjusted)) + geom_histogram(binwidth = 18, color = "#97BC62", fill = "#C6E67A", cex=0.35) + 
+
+ggplot(data = df.pairs, mapping = aes(x = high)) + geom_histogram(color = "#97BC62", fill = "#C6E67A", cex=0.35) + 
   xlab("Closing Value") + ylab("Number of Suburbs") + theme_ipsum_rc(base_size = 10) + theme(axis.title.y = element_text(size = 10), axis.text.y = element_text(size = 10), axis.text.x = element_text(size = 10), axis.title.x = element_text(size = 10))
+
+ggplot(data = df.pairs, mapping = aes(x = daily_return)) + geom_histogram(color = "#97BC62", fill = "#C6E67A", cex=0.35) + theme_ipsum_rc(base_size = 10) + theme(axis.title.y = element_text(size = 10), axis.text.y = element_text(size = 10), axis.text.x = element_text(size = 10), axis.title.x = element_text(size = 10))
+
+ggplot(data = df.pairs, mapping = aes(x = volume)) + geom_histogram(color = "#97BC62", fill = "#C6E67A", cex=0.35) + theme_ipsum_rc(base_size = 10) + theme(axis.title.y = element_text(size = 10), axis.text.y = element_text(size = 10), axis.text.x = element_text(size = 10), axis.title.x = element_text(size = 10))
+
 
 
 ```
@@ -232,8 +235,8 @@ Now, let's take a closer look at the `crim` variable, per capita crime rate by t
 
 
 ```{r, echo=TRUE}
-range(df.pairs$adjusted)
-summary(df.pairs$adjusted)
+range(df.pairs$high)
+summary(df.pairs$high)
 
 ```
 
@@ -377,7 +380,8 @@ Finally, we refit our ridge regression model on the full data set, using the val
 
 ```{r, echo=TRUE}
 out <- glmnet(x, y, alpha = 0)
-predict(out, type = "coefficients", s = bestlam)[1:15, ]
+
+predict(out, type = "coefficients", s = bestlam)[1:12, ]
 ```
 
 
@@ -1260,7 +1264,7 @@ df.pairs <- df.pairs %>%
 
   
 ```{r}
-df.pairs2 <- df.pairs %>% dplyr::select(ntweets, nfav, nretweet, nreply, volume, adjusted, daily_return, lag1, lag2, years)
+df.pairs2 <- df.pairs %>% dplyr::select(ntweets, nfav, nretweet, nreply, volume, high, daily_return, lag1, lag2, years)
 #df.pairs2$year.group <- as.factor(df.pairs2$year.group)
 ```
 
